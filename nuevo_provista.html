@@ -1,0 +1,776 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PROVISTA</title>
+    <!-- Librería para generar QR Codes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Fuentes e Iconos -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e67e22;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #c0392b;
+            --light: #ecf0f1;
+            --dark: #1a252f;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --radius: 8px;
+        }
+
+        /* Modo Oscuro automático */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #121212;
+                --card: #1e1e1e;
+                --light: #2c2c2c;
+                --primary: #ecf0f1;
+                --text: #ecf0f1;
+            }
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--primary); line-height: 1.6; padding-bottom: 80px; }
+        
+        header { background: var(--card); padding: 1rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        h1 { font-size: 1.2rem; font-weight: 800; color: var(--primary); margin: 0; }
+        h1 span { color: var(--accent); }
+        
+        main { padding: 1rem; max-width: 800px; margin: 0 auto; }
+        
+        section { display: none; animation: fadeIn 0.3s ease; }
+        section.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-around; padding: 0.8rem 0; z-index: 99; }
+        nav button { background: none; border: none; color: #95a5a6; cursor: pointer; display: flex; flex-direction: column; align-items: center; font-size: 0.8rem; }
+        nav button i { font-size: 1.4rem; margin-bottom: 4px; }
+        nav button.active { color: var(--accent); }
+
+        .card { background: var(--card); padding: 1.2rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1rem; }
+        .card h3 { margin-bottom: 0.8rem; border-bottom: 1px solid var(--light); padding-bottom: 0.5rem; font-size: 1rem; }
+        
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .stat-box { text-align: center; padding: 1rem; background: var(--light); border-radius: var(--radius); }
+        .stat-value { font-size: 1.5rem; font-weight: 800; display: block; }
+        .stat-label { font-size: 0.8rem; opacity: 0.8; }
+
+        .progress-bar { height: 10px; background: #ddd; border-radius: 5px; overflow: hidden; margin: 5px 0; }
+        .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.5s ease; }
+
+        .form-group { margin-bottom: 1rem; }
+        .input-row { display: flex; gap: 10px; }
+        label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.9rem; }
+        input, select, textarea { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: var(--radius); background: var(--bg); color: var(--primary); }
+        button.btn-primary { width: 100%; padding: 1rem; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button.btn-primary:hover { background: #d35400; }
+        button.btn-secondary { width: 100%; padding: 0.8rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-weight: 600; cursor: pointer; margin-top: 5px; }
+        
+        .item-list { list-style: none; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid var(--light); }
+        .item-info h4 { font-size: 1rem; margin-bottom: 0.2rem; }
+        .item-info p { font-size: 0.8rem; opacity: 0.7; }
+        .badge { padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        
+        .controls button { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 1rem; }
+        .btn-qr { background: var(--primary); margin-right: 5px; }
+        .btn-minus { background: var(--danger); margin-right: 5px; }
+        .btn-plus { background: var(--success); }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+        .modal.open { display: flex; }
+        .modal-content { background: var(--card); padding: 2rem; width: 90%; max-width: 400px; border-radius: var(--radius); position: relative; text-align: center; }
+        .close-modal { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; }
+
+        .toast { position: fixed; top: 20px; right: 20px; background: var(--dark); color: white; padding: 1rem; border-radius: var(--radius); z-index: 300; transform: translateX(150%); transition: transform 0.3s ease; }
+        .toast.show { transform: translateX(0); }
+
+        .scanner-placeholder { width: 100%; height: 200px; background: #000; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: var(--radius); margin-bottom: 1rem; position: relative; overflow: hidden; }
+        .scan-line { position: absolute; width: 100%; height: 2px; background: #0f0; top: 0; animation: scan 2s infinite linear; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        /* --- ESTILOS DE IMPRESIÓN CORREGIDOS --- */
+        @media print {
+            /* Ocultar todo lo que no sea el área de impresión */
+            body > * { visibility: hidden; }
+            
+            /* Forzar visibilidad del área de impresión */
+            #print-area { 
+                visibility: visible; 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%; 
+                display: flex !important; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                margin: 0;
+            }
+            
+            /* Asegurar que el QR dentro del área sea visible */
+            #print-area * { visibility: visible; }
+        }
+
+        /* Contenedor del QR para impresión (oculto normalmente) */
+        #print-area { 
+            display: none; 
+            padding: 40px; 
+            border: 4px solid #000;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+        #print-area h2 { 
+            font-size: 24pt; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            border: none; 
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        #print-area img { 
+            width: 250px; 
+            height: 250px; 
+            display: block;
+            margin: 0 auto;
+        }
+        #print-area p { 
+            text-align: center; 
+            font-size: 14pt; 
+            margin-top: 20px; 
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>PRO<span>VISTA</span></h1>
+        <div id="autonomy-indicator" style="text-align: right;">
+            <small style="font-size: 0.7rem;">Días Autonomía</small><br>
+            <strong style="color: var(--accent); font-size: 1.2rem;" id="header-days">0</strong>
+        </div>
+    </header>
+
+    <main>
+        <!-- MÓDULO 1: PLANIFICADOR (META) -->
+        <section id="module-planner" class="active">
+            <div class="card">
+                <h3><i class="fas fa-users"></i> Perfil Familiar</h3>
+                <p style="margin-bottom: 1rem; font-size: 0.9rem;">Define a quién debes abastecer para calcular la meta de 30 días.</p>
+                <div class="form-group">
+                    <label>Adultos</label>
+                    <input type="number" id="input-adults" value="1" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Niños</label>
+                    <input type="number" id="input-kids" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Mascotas</label>
+                    <input type="number" id="input-pets" value="0" min="0">
+                </div>
+                <button class="btn-primary" onclick="saveProfile()">Actualizar Metas</button>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-calculator"></i> Objetivos Calculados</h3>
+                <p style="font-size: 0.8rem; color: var(--warning);">Basado en estándares internacionales de supervivencia.</p>
+                <div class="stat-grid" style="margin-top: 1rem;">
+                    <div class="stat-box">
+                        <span class="stat-value" id="goal-water">0L</span>
+                        <span class="stat-label">Agua (30d)</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value" id="goal-calories">0</span>
+                        <span class="stat-label">Calorías Totales</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MÓDULO 2: GESTIÓN FÍSICA (CAJAS) -->
+        <section id="module-stock">
+            <!-- Nueva sección para gestionar cajas e imprimir -->
+            <div class="card">
+                <h3><i class="fas fa-boxes"></i> Gestión de Cajas</h3>
+                <p style="font-size: 0.8rem; margin-bottom: 10px;">Crea nuevas cajas o imprime sus etiquetas.</p>
+                
+                <div class="input-row" style="margin-bottom: 10px;">
+                    <input type="text" id="new-box-name" placeholder="Nombre nueva caja (ej. Garage)">
+                    <button class="btn-primary" style="width: auto;" onclick="addNewBox()"><i class="fas fa-plus"></i></button>
+                </div>
+
+                <ul id="boxes-list" class="item-list">
+                    <!-- Lista de cajas generada por JS -->
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-box-open"></i> Inventario de Caja</h3>
+                <div class="form-group">
+                    <select id="box-selector" onchange="renderBoxDetails()">
+                        <option value="">-- Selecciona Caja --</option>
+                    </select>
+                </div>
+                
+                <button class="btn-primary" style="margin-bottom: 1rem; background-color: var(--primary);" onclick="openModal('modal-add-item')">
+                    <i class="fas fa-plus"></i> Agregar Item
+                </button>
+
+                <div id="box-content-area">
+                    <div style="text-align: center; padding: 2rem; color: #999;">
+                        Selecciona una caja para ver su contenido.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-qrcode"></i> Escáner Rápido</h3>
+                <div class="scanner-placeholder">
+                    <div class="scan-line"></div>
+                    <span><i class="fas fa-camera"></i> Vista de Cámara</span>
+                </div>
+                <p style="font-size: 0.8rem; text-align: center;">Apunta al código QR de la caja (Simulado)</p>
+            </div>
+        </section>
+
+        <!-- MÓDULO 3: INTELIGENCIA (LISTA COMPRAS) -->
+        <section id="module-intelligence">
+            <div class="card">
+                <h3><i class="fas fa-clipboard-list"></i> Lista de Compras Inteligente</h3>
+                <p style="font-size: 0.8rem;">Lo que falta para llegar a tu meta de 30 días.</p>
+                <ul id="shopping-list" class="item-list">
+                    <!-- Dinámico -->
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h3><i class="fas fa-check-circle"></i> Control de Excedentes</h3>
+                <p style="font-size: 0.8rem; color: var(--success);">Categorías donde tienes stock de sobra.</p>
+                <ul id="surplus-list" class="item-list">
+                    <!-- Dinámico -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- MÓDULO 4: DASHBOARD (FIFO) -->
+        <section id="module-dashboard">
+            <div class="card" style="border-left: 5px solid var(--accent);">
+                <h3>Semáforo de Autonomía</h3>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <i class="fas fa-tint" style="color: #3498db; font-size: 1.5rem;"></i>
+                        <span class="stat-value" id="dash-water-days">0</span>
+                        <span class="stat-label">Días de Agua</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-utensils" style="color: var(--accent); font-size: 1.5rem;"></i>
+                        <span class="stat-value" id="dash-food-days">0</span>
+                        <span class="stat-label">Días Comida</span>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <label>Estado General</label>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="general-progress" style="width: 0%;"></div>
+                    </div>
+                    <p id="general-status-text" style="font-size: 0.8rem; text-align: right;">Preparación: 0%</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Alertas de Caducidad</h3>
+                <p style="font-size: 0.8rem;">Próximos 90 días (Sistema FIFO)</p>
+                <ul id="expiring-list" class="item-list">
+                    <!-- Dinámico -->
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <!-- Navegación -->
+    <nav>
+        <button onclick="navTo('module-planner', this)" class="active"><i class="fas fa-bullseye"></i> Meta</button>
+        <button onclick="navTo('module-stock', this)"><i class="fas fa-boxes"></i> Stock</button>
+        <button onclick="navTo('module-intelligence', this)"><i class="fas fa-chart-pie"></i> Compras</button>
+        <button onclick="navTo('module-dashboard', this)"><i class="fas fa-tachometer-alt"></i> Panel</button>
+    </nav>
+
+    <!-- Modal Agregar Item -->
+    <div id="modal-add-item" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('modal-add-item')">&times;</span>
+            <h3>Nuevo Producto</h3>
+            <form id="form-add-item" onsubmit="addItem(event)">
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="item-category" required>
+                        <option value="agua">Agua</option>
+                        <option value="comida">Comida</option>
+                        <option value="medicacion">Medicación</option>
+                        <option value="higiene">Higiene</option>
+                        <option value="energia">Energía/Pilas</option>
+                        <option value="seguridad">Seguridad</option>
+                        <option value="moral">Confort/Moral</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="item-name" placeholder="Ej. Arroz 1kg" required>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad</label>
+                    <input type="number" id="item-qty" value="1" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Caja (Ubicación)</label>
+                    <select id="item-box" required>
+                        <!-- Dinámico -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Vencimiento</label>
+                    <input type="date" id="item-expiry">
+                </div>
+                <button type="submit" class="btn-primary">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Generador de QR -->
+    <div id="modal-qr" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('modal-qr')">&times;</span>
+            <h3>Vista Previa QR</h3>
+            <p id="qr-box-name-display" style="font-weight:bold; font-size:1.2rem; margin-bottom:1rem; color:var(--accent);"></p>
+            <div id="qrcode" style="display: flex; justify-content: center; margin-bottom: 1rem;"></div>
+            <button class="btn-primary" onclick="printLabel()"><i class="fas fa-print"></i> Imprimir Etiqueta</button>
+        </div>
+    </div>
+
+    <!-- Modal Disclaimer -->
+    <div id="modal-disclaimer" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('modal-disclaimer')">&times;</span>
+            <h3 style="color: var(--danger);">Aviso de Responsabilidad</h3>
+            <p>PROVISTA es una herramienta educativa y de gestión logística.</p>
+            <ul style="margin: 1rem 0 1rem 1.5rem; font-size: 0.9rem;">
+                <li>No garantiza la supervivencia en situaciones extremas.</li>
+                <li>Verifique siempre las regulaciones locales sobre almacenamiento.</li>
+                <li>Consuma los productos antes de su fecha de caducidad.</li>
+                <li>Sus datos se guardan localmente en este dispositivo.</li>
+            </ul>
+            <button class="btn-primary" onclick="acceptDisclaimer()">Entendido</button>
+        </div>
+    </div>
+
+    <!-- Área de Impresión (Oculta hasta imprimir) -->
+    <div id="print-area">
+        <h2 id="print-title">NOMBRE CAJA</h2>
+        <div id="print-qr-container"></div>
+        <p>PROVISTA SYSTEM</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Mensaje aquí</div>
+
+    <script>
+        // --- ESTADO Y DATOS ---
+        const DB_KEY = 'provista_db_v1';
+        let currentBoxId = ''; // Variable global para saber qué caja imprimir
+        
+        let appData = {
+            profile: {
+                adults: 1,
+                kids: 0,
+                pets: 0
+            },
+            boxes: [
+                { id: 'box_1', name: 'Cocina / Despensa' },
+                { id: 'box_2', name: 'Bodega / Trastero' },
+                { id: 'box_3', name: 'Botiquín' }
+            ],
+            inventory: [],
+            disclaimerAccepted: false
+        };
+
+        function loadData() {
+            const stored = localStorage.getItem(DB_KEY);
+            if (stored) {
+                appData = JSON.parse(stored);
+            }
+            checkDisclaimer();
+            updateUI();
+        }
+
+        function saveData() {
+            localStorage.setItem(DB_KEY, JSON.stringify(appData));
+            updateUI();
+        }
+
+        const GOALS_PER_PERSON_PER_DAY = {
+            water: 3,
+            calories: 2200
+        };
+
+        function calculateGoals() {
+            const totalPeople = parseInt(appData.profile.adults) + parseInt(appData.profile.kids);
+            const days = 30;
+            const waterLiters = totalPeople * GOALS_PER_PERSON_PER_DAY.water * days;
+            const calories = totalPeople * GOALS_PER_PERSON_PER_DAY.calories * days;
+            return { waterLiters, calories, totalPeople };
+        }
+
+        function getDaysSupply() {
+            const goals = calculateGoals();
+            let currentWater = 0;
+            let currentCalories = 0;
+            let expiringItems = [];
+
+            const today = new Date();
+            const alertDate = new Date();
+            alertDate.setDate(today.getDate() + 90);
+
+            appData.inventory.forEach(item => {
+                if(item.category === 'agua') {
+                    currentWater += parseInt(item.qty);
+                } else if (item.category === 'comida') {
+                    currentCalories += (parseInt(item.qty) * 500); 
+                }
+
+                if(item.expiry) {
+                    const expDate = new Date(item.expiry);
+                    if(expDate <= alertDate) {
+                        expiringItems.push({...item, expiryDate: expDate});
+                    }
+                }
+            });
+
+            expiringItems.sort((a,b) => a.expiryDate - b.expiryDate);
+
+            const waterDays = goals.waterLiters > 0 ? Math.floor(currentWater / (goals.waterLiters / 30)) : 0;
+            const foodDays = goals.calories > 0 ? Math.floor(currentCalories / (goals.calories / 30)) : 0;
+            const generalPct = Math.min(100, Math.floor(((waterDays + foodDays) / 60) * 100));
+
+            return { waterDays, foodDays, generalPct, expiringItems };
+        }
+
+        function navTo(sectionId, btn) {
+            document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if(sectionId === 'module-dashboard') updateDashboard();
+            if(sectionId === 'module-intelligence') updateIntelligence();
+            if(sectionId === 'module-stock') renderBoxList();
+        }
+
+        function updateUI() {
+            document.getElementById('input-adults').value = appData.profile.adults;
+            document.getElementById('input-kids').value = appData.profile.kids;
+            document.getElementById('input-pets').value = appData.profile.pets;
+
+            const goals = calculateGoals();
+            document.getElementById('goal-water').innerText = goals.waterLiters + ' L';
+            document.getElementById('goal-calories').innerText = goals.calories + ' kcal';
+
+            const boxSelects = [document.getElementById('box-selector'), document.getElementById('item-box')];
+            boxSelects.forEach(select => {
+                if(!select) return;
+                const currentVal = select.value;
+                select.innerHTML = '';
+                appData.boxes.forEach(box => {
+                    const opt = document.createElement('option');
+                    opt.value = box.id;
+                    opt.innerText = box.name;
+                    select.appendChild(opt);
+                });
+                if(currentVal) select.value = currentVal;
+            });
+
+            const stats = getDaysSupply();
+            const avgDays = Math.floor((stats.waterDays + stats.foodDays) / 2);
+            document.getElementById('header-days').innerText = avgDays > 999 ? '+999' : avgDays;
+
+            renderBoxDetails();
+            renderBoxList();
+        }
+
+        // --- LÓGICA DE CAJAS Y QR ---
+        
+        function renderBoxList() {
+            const list = document.getElementById('boxes-list');
+            list.innerHTML = '';
+            appData.boxes.forEach(box => {
+                const li = document.createElement('li');
+                li.className = 'item-row';
+                li.innerHTML = `
+                    <div class="item-info">
+                        <h4>${box.name}</h4>
+                    </div>
+                    <div class="controls">
+                        <button class="btn-qr" onclick="showQR('${box.id}', '${box.name}')"><i class="fas fa-qrcode"></i></button>
+                        <button class="btn-minus" onclick="deleteBox('${box.id}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function addNewBox() {
+            const nameInput = document.getElementById('new-box-name');
+            const name = nameInput.value.trim();
+            if(name) {
+                const newId = 'box_' + Date.now();
+                appData.boxes.push({ id: newId, name: name });
+                saveData();
+                nameInput.value = '';
+                showToast("Caja creada");
+            }
+        }
+
+        function deleteBox(id) {
+            if(confirm("¿Borrar caja y su contenido?")) {
+                appData.boxes = appData.boxes.filter(b => b.id !== id);
+                appData.inventory = appData.inventory.filter(i => i.boxId !== id);
+                saveData();
+            }
+        }
+
+        function showQR(boxId, boxName) {
+            currentBoxId = boxId; // Guardamos el ID para la impresión
+            document.getElementById('qr-box-name-display').innerText = boxName;
+            document.getElementById('qrcode').innerHTML = ""; 
+            
+            // Generar QR para la Vista Previa
+            new QRCode(document.getElementById("qrcode"), {
+                text: boxId,
+                width: 128,
+                height: 128
+            });
+
+            openModal('modal-qr');
+        }
+
+        function printLabel() {
+            const boxName = document.getElementById('qr-box-name-display').innerText;
+            document.getElementById('print-title').innerText = boxName;
+            
+            // Limpiar el contenedor de impresión
+            const printContainer = document.getElementById('print-qr-container');
+            printContainer.innerHTML = "";
+            
+            // Generar el QR NUEVAMENTE directamente en el área de impresión
+            // Esto asegura que el QR sea visible para el driver de impresión
+            new QRCode(printContainer, {
+                text: currentBoxId,
+                width: 250,
+                height: 250
+            });
+
+            // Pequeño retardo para asegurar que se dibuje antes de imprimir
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        }
+
+        // --- LÓGICA DEL DASHBOARD ---
+
+        function updateDashboard() {
+            const stats = getDaysSupply();
+            
+            document.getElementById('dash-water-days').innerText = stats.waterDays;
+            document.getElementById('dash-food-days').innerText = stats.foodDays;
+            
+            const bar = document.getElementById('general-progress');
+            bar.style.width = stats.generalPct + '%';
+            bar.style.backgroundColor = stats.generalPct < 30 ? 'var(--danger)' : (stats.generalPct < 70 ? 'var(--warning)' : 'var(--success)');
+            
+            document.getElementById('general-status-text').innerText = `Preparación: ${stats.generalPct}%`;
+
+            const list = document.getElementById('expiring-list');
+            list.innerHTML = '';
+            if(stats.expiringItems.length === 0) {
+                list.innerHTML = '<li class="item-row" style="justify-content:center; color:var(--success);">Nada por vencer</li>';
+            } else {
+                stats.expiringItems.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'item-row';
+                    const daysLeft = Math.ceil((item.expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+                    li.innerHTML = `
+                        <div class="item-info">
+                            <h4>${item.name}</h4>
+                            <p><span class="badge badge-expiring">Vence en ${daysLeft} días</span></p>
+                        </div>
+                    `;
+                    list.appendChild(li);
+                });
+            }
+        }
+
+        function updateIntelligence() {
+            const goals = calculateGoals();
+            const shopList = document.getElementById('shopping-list');
+            const surplusList = document.getElementById('surplus-list');
+            shopList.innerHTML = '';
+            surplusList.innerHTML = '';
+
+            const currentWater = appData.inventory.filter(i => i.category === 'agua').reduce((acc, i) => acc + parseInt(i.qty), 0);
+            if (currentWater < goals.waterLiters) {
+                addShopItem(shopList, 'Agua', goals.waterLiters - currentWater, 'Litros');
+            } else {
+                addSurplusItem(surplusList, 'Agua');
+            }
+
+            const currentCal = appData.inventory.filter(i => i.category === 'comida').reduce((acc, i) => acc + (parseInt(i.qty)*500), 0);
+            if (currentCal < goals.calories) {
+                addShopItem(shopList, 'Comida (Calorías)', Math.ceil((goals.calories - currentCal)/500), 'Porciones');
+            } else {
+                addSurplusItem(surplusList, 'Comida');
+            }
+        }
+
+        function addShopItem(list, name, qty, unit) {
+            const li = document.createElement('li');
+            li.className = 'item-row';
+            li.innerHTML = `
+                <div class="item-info"><h4>${name}</h4></div>
+                <div style="font-weight:bold; color:var(--danger);">+${qty} ${unit}</div>
+            `;
+            list.appendChild(li);
+        }
+        
+        function addSurplusItem(list, name) {
+            const li = document.createElement('li');
+            li.className = 'item-row';
+            li.innerHTML = `
+                <div class="item-info"><h4>${name}</h4></div>
+                <div style="font-weight:bold; color:var(--success);"><i class="fas fa-check"></i> OK</div>
+            `;
+            list.appendChild(li);
+        }
+
+        function renderBoxDetails() {
+            const boxId = document.getElementById('box-selector').value;
+            const container = document.getElementById('box-content-area');
+            container.innerHTML = '';
+
+            if (!boxId) return;
+
+            const boxItems = appData.inventory.filter(i => i.boxId === boxId);
+
+            if(boxItems.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:1rem;">Caja vacía</div>';
+                return;
+            }
+
+            const ul = document.createElement('ul');
+            ul.className = 'item-list';
+
+            boxItems.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'item-row';
+                li.innerHTML = `
+                    <div class="item-info">
+                        <h4>${item.name}</h4>
+                        <p>${item.category} ${item.expiry ? '| Vence: ' + item.expiry : ''}</p>
+                    </div>
+                    <div class="controls">
+                        <button class="btn-minus" onclick="updateStock('${item.id}', -1)"><i class="fas fa-minus"></i></button>
+                        <span style="margin: 0 5px; font-weight:bold;">${item.qty}</span>
+                        <button class="btn-plus" onclick="updateStock('${item.id}', 1)"><i class="fas fa-plus"></i></button>
+                    </div>
+                `;
+                ul.appendChild(li);
+            });
+            container.appendChild(ul);
+        }
+
+        function saveProfile() {
+            appData.profile.adults = document.getElementById('input-adults').value;
+            appData.profile.kids = document.getElementById('input-kids').value;
+            appData.profile.pets = document.getElementById('input-pets').value;
+            saveData();
+            showToast("Perfil actualizado");
+        }
+
+        function addItem(e) {
+            e.preventDefault();
+            const newItem = {
+                id: Date.now().toString(),
+                category: document.getElementById('item-category').value,
+                name: document.getElementById('item-name').value,
+                qty: parseInt(document.getElementById('item-qty').value),
+                boxId: document.getElementById('item-box').value,
+                expiry: document.getElementById('item-expiry').value
+            };
+            
+            appData.inventory.push(newItem);
+            saveData();
+            closeModal('modal-add-item');
+            document.getElementById('form-add-item').reset();
+            showToast("Producto agregado");
+        }
+
+        function updateStock(itemId, change) {
+            const itemIndex = appData.inventory.findIndex(i => i.id === itemId);
+            if (itemIndex > -1) {
+                let newQty = parseInt(appData.inventory[itemIndex].qty) + change;
+                if (newQty <= 0) {
+                    if(confirm("¿Eliminar producto del inventario?")) {
+                        appData.inventory.splice(itemIndex, 1);
+                    } else {
+                        return;
+                    }
+                } else {
+                    appData.inventory[itemIndex].qty = newQty;
+                }
+                saveData();
+            }
+        }
+
+        function checkDisclaimer() {
+            if (!appData.disclaimerAccepted) {
+                openModal('modal-disclaimer');
+            }
+        }
+
+        function acceptDisclaimer() {
+            appData.disclaimerAccepted = true;
+            saveData();
+            closeModal('modal-disclaimer');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
+```
+
